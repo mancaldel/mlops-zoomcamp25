@@ -71,10 +71,17 @@ def run_register_model(data_path: str, top_n: int):
 
     # Select the model with the lowest test RMSE
     experiment = client.get_experiment_by_name(EXPERIMENT_NAME)
-    # best_run = client.search_runs( ...  )[0]
+    best_run = client.search_runs(
+        experiment_ids=experiment.experiment_id,
+        order_by=["metrics.test_rmse DESC"],
+        max_results=5
+    )[0]
 
     # Register the best model
-    # mlflow.register_model( ... )
+    mlflow.register_model(
+        model_uri=f"run:/{best_run.info.run_id}/model",
+        name="TripDurationModel"
+    )
 
 
 if __name__ == '__main__':
