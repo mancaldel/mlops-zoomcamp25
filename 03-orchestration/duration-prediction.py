@@ -7,6 +7,7 @@ from pathlib import Path
 
 import mlflow
 import pandas as pd
+from prefect import task, flow
 import xgboost as xgb
 
 from sklearn.linear_model import LinearRegression
@@ -22,7 +23,7 @@ models_folder = Path('models')
 models_folder.mkdir(exist_ok=True)
 
 
-
+@task(retries=3, retry_delay_seconds=5)
 def read_dataframe(year, month):
     url = f'https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_{year}-{month:02d}.parquet'
     df = pd.read_parquet(url)
@@ -41,6 +42,7 @@ def read_dataframe(year, month):
     return df
 
 
+@task(retries=3, retry_delay_seconds=5)
 def create_X(df, dv=None):
     categorical = ['PULocationID', 'DOLocationID']  # ['PU_DO']
     # numerical = ['trip_distance']
@@ -55,6 +57,7 @@ def create_X(df, dv=None):
     return X, dv
 
 
+@task(retries=3, retry_delay_seconds=5)
 def train_xgb(X_train, y_train, X_val, y_val, dv):
     with mlflow.start_run() as run:
         train = xgb.DMatrix(X_train, label=y_train)
@@ -93,6 +96,7 @@ def train_xgb(X_train, y_train, X_val, y_val, dv):
         return run.info.run_id
 
 
+@task(retries=3, retry_delay_seconds=5)
 def train_linear_regressor(X_train, y_train, X_val, y_val, dv):
     with mlflow.start_run() as run:
         lr = LinearRegression()
@@ -111,6 +115,7 @@ def train_linear_regressor(X_train, y_train, X_val, y_val, dv):
         return run.info.run_id
 
 
+@flow(retries=3, retry_delay_seconds=10)
 def run(year, month, model="linear"):
     df_train = read_dataframe(year=year, month=month)
 
